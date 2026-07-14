@@ -5,6 +5,7 @@ import { eq, and, count, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { exercises, workoutSessions, workoutSets } from "@/db/schema";
+import { checkNewPr, type PrHit } from "@/lib/prs";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
 
@@ -203,6 +204,21 @@ export async function logSet(input: z.infer<typeof logSetSchema>) {
       and(eq(workoutSets.sessionId, session.id), eq(workoutSets.exerciseId, data.exerciseId)),
     );
 
+  // Compare against every prior set of this exercise (across all sessions)
+  // before inserting, so the new set itself doesn't count as its own PR.
+  // A brand-new exercise with no history yet has nothing to beat, so it's
+  // not treated as a celebratory PR moment.
+  const priorSets = await db.query.workoutSets.findMany({
+    where: eq(workoutSets.exerciseId, data.exerciseId),
+  });
+  const prHit: PrHit =
+    priorSets.length === 0
+      ? { heaviestWeight: false, bestEstimated1Rm: false, mostReps: false, bestSetVolume: false }
+      : checkNewPr(
+          priorSets.map((s) => ({ weight: s.weight, reps: s.reps })),
+          { weight: data.weight, reps: data.reps },
+        );
+
   const [newSet] = await db
     .insert(workoutSets)
     .values({
@@ -218,7 +234,8 @@ export async function logSet(input: z.infer<typeof logSetSchema>) {
 
   revalidatePath("/");
   revalidatePath("/history");
-  return { session, set: newSet };
+  revalidatePath("/analytics");
+  return { session, set: newSet, prHit };
 }
 
 const updateSetSchema = z.object({

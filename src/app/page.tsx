@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { settings as settingsTable } from "@/db/schema";
 import { WorkoutLog } from "@/components/WorkoutLog";
 import { getWorkoutDay } from "@/app/workout-actions";
+import { getRoutines } from "@/app/routine-actions";
 import { todayInTimezone } from "@/lib/date";
 
 // Single-user personal tracker — always read fresh data, no static caching.
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_TIMEZONE = "Asia/Kuala_Lumpur";
 const DEFAULT_WEIGHT_UNIT = "kg";
+const DEFAULT_REST_TIMER_SECONDS = 90;
 
 export default async function Home() {
   const settingsRow = await db.query.settings.findFirst({
@@ -17,11 +19,13 @@ export default async function Home() {
   });
   const timezone = settingsRow?.timezone ?? DEFAULT_TIMEZONE;
   const weightUnit = settingsRow?.weightUnit ?? DEFAULT_WEIGHT_UNIT;
+  const restTimerSeconds = settingsRow?.restTimerSeconds ?? DEFAULT_REST_TIMER_SECONDS;
   const today = todayInTimezone(timezone);
 
-  const [exerciseRows, todaysSets] = await Promise.all([
+  const [exerciseRows, todaysSets, routines] = await Promise.all([
     db.query.exercises.findMany({ orderBy: (ex, { asc }) => [asc(ex.name)] }),
     getWorkoutDay(today),
+    getRoutines(),
   ]);
 
   return (
@@ -32,6 +36,8 @@ export default async function Home() {
         initialExercises={exerciseRows.map((e) => ({ id: e.id, name: e.name }))}
         initialSets={todaysSets}
         weightUnit={weightUnit}
+        routines={routines}
+        restTimerSeconds={restTimerSeconds}
       />
     </main>
   );

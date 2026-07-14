@@ -15,6 +15,20 @@
       "when": 1784030493904,
       "tag": "0001_confused_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784042875503,
+      "tag": "0002_wakeful_malice",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784043792422,
+      "tag": "0003_gifted_hex",
+      "breakpoints": true
     }
   ]
 }

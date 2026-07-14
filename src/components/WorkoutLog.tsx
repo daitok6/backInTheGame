@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ExercisePicker, type ExerciseOption } from "./ExercisePicker";
+import { RestTimer } from "./RestTimer";
 import {
   getWorkoutDay,
   logSet,
@@ -9,12 +10,16 @@ import {
   deleteSet,
   type WorkoutSetView,
 } from "@/app/workout-actions";
+import { isAnyPr } from "@/lib/prs";
+import type { RoutineView } from "@/app/routine-actions";
 
 interface WorkoutLogProps {
   today: string;
   initialExercises: ExerciseOption[];
   initialSets: WorkoutSetView[];
   weightUnit: string;
+  routines: RoutineView[];
+  restTimerSeconds: number;
 }
 
 export function WorkoutLog({
@@ -22,6 +27,8 @@ export function WorkoutLog({
   initialExercises,
   initialSets,
   weightUnit,
+  routines,
+  restTimerSeconds,
 }: WorkoutLogProps) {
   const [date, setDate] = useState(today);
   const [exercisesList, setExercisesList] = useState<ExerciseOption[]>(initialExercises);
@@ -35,6 +42,12 @@ export function WorkoutLog({
   const [reps, setReps] = useState("");
   const [rpe, setRpe] = useState("");
   const [logging, setLogging] = useState(false);
+
+  const [activeRoutineId, setActiveRoutineId] = useState<number | null>(null);
+  const [restTrigger, setRestTrigger] = useState(0);
+  const [prToast, setPrToast] = useState<string | null>(null);
+
+  const activeRoutine = routines.find((r) => r.id === activeRoutineId) ?? null;
 
   useEffect(() => {
     if (date === today) {
@@ -57,6 +70,12 @@ export function WorkoutLog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
+  useEffect(() => {
+    if (!prToast) return;
+    const timeout = setTimeout(() => setPrToast(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [prToast]);
+
   const grouped = useMemo(() => {
     const map = new Map<number, WorkoutSetView[]>();
     for (const s of sets) {
@@ -71,6 +90,12 @@ export function WorkoutLog({
     }));
   }, [sets]);
 
+  function handlePickRoutineExercise(slot: RoutineView["exercises"][number]) {
+    setSelectedExerciseId(slot.exerciseId);
+    if (slot.targetWeight != null) setWeight(String(slot.targetWeight));
+    if (slot.targetReps != null) setReps(String(slot.targetReps));
+  }
+
   async function handleLogSet() {
     if (!selectedExerciseId || weight === "" || reps === "") return;
     const weightNum = Number(weight);
@@ -82,6 +107,7 @@ export function WorkoutLog({
       const rpeNum = rpe === "" ? undefined : Number(rpe);
       const result = await logSet({
         date,
+        sessionLabel: activeRoutine?.name,
         exerciseId: selectedExerciseId,
         weight: weightNum,
         reps: repsNum,
@@ -104,6 +130,10 @@ export function WorkoutLog({
           note: result.set.note ?? "",
         },
       ]);
+      if (isAnyPr(result.prHit)) {
+        setPrToast(`New PR on ${exerciseName}! 🎉`);
+      }
+      setRestTrigger((n) => n + 1);
       // Keep the exercise selected — logging several consecutive sets of
       // the same exercise is the common case.
       setWeight("");
@@ -138,6 +168,57 @@ export function WorkoutLog({
           className="rounded-lg border border-border bg-white px-2 py-1 text-sm outline-none focus:border-teal"
         />
       </div>
+
+      {prToast && (
+        <div className="rounded-card border border-teal bg-teal-mist px-4 py-2 text-sm font-medium text-teal-deep">
+          {prToast}
+        </div>
+      )}
+
+      {routines.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-4">
+          <label className="text-xs font-medium uppercase tracking-wide text-muted">
+            Start from routine
+          </label>
+          <select
+            value={activeRoutineId ?? ""}
+            onChange={(e) => setActiveRoutineId(e.target.value === "" ? null : Number(e.target.value))}
+            className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-teal"
+          >
+            <option value="">None — freeform logging</option>
+            {routines.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          {activeRoutine && activeRoutine.exercises.length > 0 && (
+            <ul className="flex flex-col gap-1.5 pt-1">
+              {activeRoutine.exercises.map((slot) => {
+                const loggedCount = sets.filter((s) => s.exerciseId === slot.exerciseId).length;
+                const done = slot.targetSets != null && loggedCount >= slot.targetSets;
+                return (
+                  <li key={slot.id} className="flex items-center justify-between text-sm">
+                    <button
+                      type="button"
+                      onClick={() => handlePickRoutineExercise(slot)}
+                      className={`text-left ${done ? "text-muted line-through" : "text-ink"}`}
+                    >
+                      {slot.exerciseName}
+                      {slot.targetSets != null && (
+                        <span className="text-muted">
+                          {" "}
+                          — {loggedCount}/{slot.targetSets}×{slot.targetReps ?? "?"}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-4">
         <ExercisePicker
@@ -187,6 +268,8 @@ export function WorkoutLog({
           {logging ? "Logging…" : "Log set"}
         </button>
       </div>
+
+      <RestTimer triggerKey={restTrigger} durationSeconds={restTimerSeconds} />
 
       <div className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">
