@@ -62,6 +62,87 @@ export async function getWorkoutDay(dateInput: string): Promise<WorkoutSetView[]
     .sort((a, b) => a.exerciseName.localeCompare(b.exerciseName) || a.setOrder - b.setOrder);
 }
 
+export interface ExerciseHistoryPoint {
+  sessionDate: string;
+  weight: number;
+  reps: number;
+}
+
+/** Read-only: every set ever logged for one exercise, joined with its
+ * session's date. Feeds the History > Workouts progress chart. */
+export async function getExerciseHistory(
+  exerciseIdInput: number,
+): Promise<ExerciseHistoryPoint[]> {
+  const exerciseId = z.number().int().positive().parse(exerciseIdInput);
+
+  const sets = await db.query.workoutSets.findMany({
+    where: eq(workoutSets.exerciseId, exerciseId),
+  });
+  if (sets.length === 0) return [];
+
+  const sessionIds = [...new Set(sets.map((s) => s.sessionId))];
+  const sessions = await db.query.workoutSessions.findMany({
+    where: inArray(workoutSessions.id, sessionIds),
+  });
+  const sessionById = new Map(sessions.map((s) => [s.id, s]));
+
+  return sets.map((s) => ({
+    sessionDate: sessionById.get(s.sessionId)?.date ?? "",
+    weight: s.weight,
+    reps: s.reps,
+  }));
+}
+
+export interface SessionSummary {
+  id: number;
+  date: string;
+  label: string;
+  exerciseNames: string[];
+  setCount: number;
+}
+
+/** Read-only: every workout session, newest first, with an exercise-name
+ * summary and set count. Feeds the History > Workouts sessions table. */
+export async function getAllSessionsSummary(): Promise<SessionSummary[]> {
+  const sessions = await db.query.workoutSessions.findMany({
+    orderBy: (s, { desc }) => [desc(s.date)],
+  });
+  if (sessions.length === 0) return [];
+
+  const sessionIds = sessions.map((s) => s.id);
+  const sets = await db.query.workoutSets.findMany({
+    where: inArray(workoutSets.sessionId, sessionIds),
+  });
+
+  const exerciseIds = [...new Set(sets.map((s) => s.exerciseId))];
+  const exerciseRows =
+    exerciseIds.length > 0
+      ? await db.query.exercises.findMany({ where: inArray(exercises.id, exerciseIds) })
+      : [];
+  const exerciseNameById = new Map(exerciseRows.map((e) => [e.id, e.name]));
+
+  const setsBySession = new Map<number, typeof sets>();
+  for (const s of sets) {
+    const arr = setsBySession.get(s.sessionId) ?? [];
+    arr.push(s);
+    setsBySession.set(s.sessionId, arr);
+  }
+
+  return sessions.map((session) => {
+    const sessionSets = setsBySession.get(session.id) ?? [];
+    const exerciseNames = [
+      ...new Set(sessionSets.map((s) => exerciseNameById.get(s.exerciseId) ?? "Unknown")),
+    ];
+    return {
+      id: session.id,
+      date: session.date,
+      label: session.label ?? "",
+      exerciseNames,
+      setCount: sessionSets.length,
+    };
+  });
+}
+
 const createExerciseSchema = z.object({
   name: z.string().min(1).max(120),
   muscleGroup: z.string().max(60).optional(),
