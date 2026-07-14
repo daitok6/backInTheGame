@@ -56,6 +56,9 @@ export interface VideoGroup {
   exercise: string;
   warning?: string;
   videos: VideoEntry[];
+  /** Optional quick Instagram Reel links — a faster alternative to a full
+   * YouTube video. Empty until filled in (paste URLs in as you find them). */
+  reelUrls?: string[];
 }
 
 export const VIDEO_LIBRARY: VideoGroup[] = [
@@ -304,4 +307,27 @@ export const RED_FLAGS = [
   "new bladder or bowel trouble",
   "leg weakness getting worse (foot dragging or giving out)",
   "pain that becomes constant and unbearable",
+];
+
+// ---------------------------------------------------------------------------
+// Starter exercise library — seeded into the `exercises` table on first run
+// so the workout-log picker isn't empty. Users can add their own beyond this.
+// ---------------------------------------------------------------------------
+
+export interface StarterExercise {
+  name: string;
+  muscleGroup: string;
+}
+
+export const STARTER_EXERCISES: StarterExercise[] = [
+  { name: "Squat", muscleGroup: "legs" },
+  { name: "Bench Press", muscleGroup: "push" },
+  { name: "Deadlift", muscleGroup: "posterior chain" },
+  { name: "Overhead Press", muscleGroup: "push" },
+  { name: "Pull-up", muscleGroup: "pull" },
+  { name: "Hip Hinge / RDL", muscleGroup: "posterior chain" },
+  { name: "Glute Bridge", muscleGroup: "posterior chain" },
+  { name: "Bird-Dog", muscleGroup: "core" },
+  { name: "Plank", muscleGroup: "core" },
+  { name: "Farmer's Carry", muscleGroup: "full body" },
 ];

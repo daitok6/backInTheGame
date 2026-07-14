@@ -2,8 +2,8 @@
 // npm script (see package.json) — this runs before any import below, since
 // ES import declarations are hoisted above ordinary top-level statements.
 import { db } from "./index";
-import { todos, settings } from "./schema";
-import { TODOS_BY_PHASE, type Phase } from "../lib/content";
+import { todos, settings, exercises } from "./schema";
+import { TODOS_BY_PHASE, STARTER_EXERCISES, type Phase } from "../lib/content";
 import { sql } from "drizzle-orm";
 
 async function seed() {
@@ -28,6 +28,19 @@ async function seed() {
     .values({ id: 1 })
     .onConflictDoNothing({ target: settings.id });
   console.log("Ensured settings row exists.");
+
+  // Seed the starter exercise library idempotently (isCustom: false marks
+  // these as pre-seeded rather than user-added).
+  let exercisesInserted = 0;
+  for (const item of STARTER_EXERCISES) {
+    const result = await db
+      .insert(exercises)
+      .values({ name: item.name, muscleGroup: item.muscleGroup, isCustom: false })
+      .onConflictDoNothing({ target: exercises.name })
+      .returning({ id: exercises.id });
+    if (result.length > 0) exercisesInserted++;
+  }
+  console.log(`Seeded exercises: ${exercisesInserted} new row(s) inserted.`);
 
   // Sanity check
   const count = await db.execute(sql`select count(*)::int as count from ${todos}`);
