@@ -1,6 +1,6 @@
-import { config } from "dotenv";
-config({ path: ".env.local" });
-
+// DATABASE_URL is loaded via NODE_OPTIONS=-r dotenv/config in the db:seed
+// npm script (see package.json) — this runs before any import below, since
+// ES import declarations are hoisted above ordinary top-level statements.
 import { db } from "./index";
 import { todos, settings } from "./schema";
 import { TODOS_BY_PHASE, type Phase } from "../lib/content";
