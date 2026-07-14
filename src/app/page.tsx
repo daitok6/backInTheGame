@@ -1,8 +1,38 @@
-export default function Home() {
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { settings as settingsTable } from "@/db/schema";
+import { WorkoutLog } from "@/components/WorkoutLog";
+import { getWorkoutDay } from "@/app/workout-actions";
+import { todayInTimezone } from "@/lib/date";
+
+// Single-user personal tracker — always read fresh data, no static caching.
+export const dynamic = "force-dynamic";
+
+const DEFAULT_TIMEZONE = "Asia/Kuala_Lumpur";
+const DEFAULT_WEIGHT_UNIT = "kg";
+
+export default async function Home() {
+  const settingsRow = await db.query.settings.findFirst({
+    where: eq(settingsTable.id, 1),
+  });
+  const timezone = settingsRow?.timezone ?? DEFAULT_TIMEZONE;
+  const weightUnit = settingsRow?.weightUnit ?? DEFAULT_WEIGHT_UNIT;
+  const today = todayInTimezone(timezone);
+
+  const [exerciseRows, todaysSets] = await Promise.all([
+    db.query.exercises.findMany({ orderBy: (ex, { asc }) => [asc(ex.name)] }),
+    getWorkoutDay(today),
+  ]);
+
   return (
-    <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col gap-4 p-4">
-      <h1 className="text-2xl font-semibold">Workouts</h1>
-      <p className="text-muted">Workout logging coming next.</p>
+    <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col gap-6 p-4 pb-10">
+      <h1 className="text-xl font-semibold">Workouts</h1>
+      <WorkoutLog
+        today={today}
+        initialExercises={exerciseRows.map((e) => ({ id: e.id, name: e.name }))}
+        initialSets={todaysSets}
+        weightUnit={weightUnit}
+      />
     </main>
   );
 }
