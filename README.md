@@ -105,9 +105,17 @@ npm run db:seed
 vercel --prod
 ```
 
-Vercel Cron (configured in `vercel.json`) hits `/api/cron/reminder` hourly;
-the route itself decides whether the current hour matches
+Vercel Cron (configured in `vercel.json`) hits `/api/cron/reminder`; the
+route itself decides whether the current hour matches
 `settings.reminder_time` in `settings.timezone` before sending anything.
+
+**Hobby plan constraint:** Vercel's Hobby (free) plan only allows a cron to
+run once per day, so `vercel.json` fires at `0 0 * * *` (00:00 UTC = 08:00
+Asia/Kuala_Lumpur, matching the default `reminder_time`) instead of hourly.
+If you change `reminder_time` to something that doesn't fall in that same
+hour, reminders won't fire until you either update the cron schedule in
+`vercel.json` to match (and redeploy) or upgrade to a Pro plan and switch
+the schedule back to `0 * * * *` for true hourly checking.
 
 ## Push reminders on iOS
 

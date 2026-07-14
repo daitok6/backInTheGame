@@ -4,6 +4,14 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { settings as settingsTable, pushSubscriptions } from "@/db/schema";
 
+// NOTE: Vercel's Hobby plan only allows crons to run once per day, so
+// vercel.json fires this once daily (00:00 UTC = 08:00 Asia/Kuala_Lumpur,
+// matching the default reminder_time) rather than hourly. The hour-match
+// check below still exists so that upgrading to Pro (and switching the
+// cron schedule back to hourly) "just works" without code changes — but on
+// Hobby, changing settings.reminder_time away from the cron's fixed fire
+// hour means reminders won't fire until vercel.json's schedule is updated
+// to match and redeployed.
 const DEFAULT_TIMEZONE = "Asia/Kuala_Lumpur";
 const DEFAULT_REMINDER_TIME = "08:00";
 const REMINDER_BODY = "Time for your check-in — sphinx, walk, and log the leg";
