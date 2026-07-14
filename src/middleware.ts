@@ -10,6 +10,9 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/_next")) return true;
   if (pathname.startsWith("/icons")) return true;
   if (pathname === "/favicon.ico") return true;
+  // Vercel Cron calls this with no cookie — it authenticates via the
+  // CRON_SECRET bearer header inside the route handler instead.
+  if (pathname.startsWith("/api/cron")) return true;
   return false;
 }
 

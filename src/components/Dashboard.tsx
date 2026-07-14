@@ -10,6 +10,7 @@ import { CentralizationStrip } from "./CentralizationStrip";
 import { Checklist } from "./Checklist";
 import { TodoList, type TodoItemView } from "./TodoList";
 import { RedFlagsFooter } from "./RedFlagsFooter";
+import { EnableReminders } from "./EnableReminders";
 import { useDebouncedSave, type SaveStatus } from "@/lib/useDebouncedSave";
 import { upsertDailyLog, toggleTodo, updateSettings } from "@/app/actions";
 import { computeDefaultPhase } from "@/lib/date";
@@ -146,6 +147,8 @@ export function Dashboard({
         onPhaseChange={setPhase}
         onFlightDateChange={handleFlightDateChange}
       />
+
+      <EnableReminders />
 
       <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-4">
         <div className="flex items-center justify-between">
