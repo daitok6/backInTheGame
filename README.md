@@ -1,10 +1,22 @@
 # Back in the Game
 
-A personal daily recovery tracker for an L4-L5 herniated disc (left-leg
-sciatica, managed without surgery), spanning a Tokyo → Kuala Lumpur
-relocation. Tracks daily exercises, pain, and relocation to-dos across three
-phases: pre-flight, flight day, and living in KL. Single user, no login
-system — a passcode gate protects the data since the app runs on a public URL.
+A personal fitness + recovery tracker. The primary use is gym workout
+logging (`/` — pick or add an exercise, log sets of weight × reps, see
+progress charts), alongside an L4-L5 herniated-disc recovery tracker
+(`/recovery` — pain check-in, leg map, phase-based checklist, relocation
+to-dos for a Tokyo → Kuala Lumpur move). Single user, no login system — a
+passcode gate protects the data since the app runs on a public URL.
+
+- **`/` (Workouts)** — log exercises/sets, edit or delete past sets, add
+  custom exercises on the fly.
+- **`/recovery`** — the original sciatica tracker: pain intensity, leg-map
+  reach, phase tabs (pre-flight/flight/in-KL), daily checklist, relocation
+  to-dos, red-flags safety footer.
+- **`/history`** — toggles between a Workouts view (per-exercise progress
+  chart + session table) and a Recovery view (pain/reach charts, stats,
+  editable entries table, CSV export).
+- **`/videos`** — exercise form references (YouTube), plus optional
+  Instagram Reel quick-links per exercise.
 
 ## Tech stack
 
@@ -123,6 +135,14 @@ Web Push on iOS Safari **only works after the app has been installed to the
 home screen** (Add to Home Screen), and requires iOS 16.4 or later. Opening
 the site in a regular Safari tab will not deliver notifications — install
 the PWA first, then tap "Enable reminders" from inside the installed app.
+
+## Adding Instagram Reel links
+
+The video library (`src/lib/content.ts`, `VIDEO_LIBRARY`) supports an
+optional `reelUrls: string[]` field per exercise group — empty by default.
+To add a quick Reel alongside the existing YouTube links, add the URL(s) to
+the relevant group's `reelUrls` array and redeploy; it'll show up on
+`/videos` and next to that exercise's "▶ watch form" link on `/recovery`.
 
 ## Privacy gate
 
