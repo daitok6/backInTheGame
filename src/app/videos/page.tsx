@@ -44,6 +44,27 @@ export default function VideosPage() {
                 </li>
               ))}
             </ul>
+            {group.reelUrls && group.reelUrls.length > 0 && (
+              <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted">
+                  🎬 Quick reels
+                </span>
+                <ul className="flex flex-col gap-1">
+                  {group.reelUrls.map((url, i) => (
+                    <li key={url}>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-teal-deep underline decoration-teal-mist underline-offset-2 hover:text-teal"
+                      >
+                        Reel {i + 1}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         ))}
       </div>
