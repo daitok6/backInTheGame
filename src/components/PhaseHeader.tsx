@@ -22,6 +22,7 @@ export function PhaseHeader({
   onFlightDateChange,
 }: PhaseHeaderProps) {
   const [editingDate, setEditingDate] = useState(false);
+  const [draftDate, setDraftDate] = useState(flightDate);
   const diff = daysUntilFlight(today, flightDate);
 
   const countdownText =
@@ -30,6 +31,21 @@ export function PhaseHeader({
       : diff === 0
         ? "Flight day"
         : `${Math.abs(diff)} day${Math.abs(diff) === 1 ? "" : "s"} since flight`;
+
+  function startEditing() {
+    setDraftDate(flightDate);
+    setEditingDate(true);
+  }
+
+  function handleSave() {
+    if (draftDate) onFlightDateChange(draftDate);
+    setEditingDate(false);
+  }
+
+  function handleCancel() {
+    setDraftDate(flightDate);
+    setEditingDate(false);
+  }
 
   return (
     <header className="flex flex-col gap-3">
@@ -41,20 +57,33 @@ export function PhaseHeader({
       </div>
 
       {editingDate ? (
-        <input
-          type="date"
-          defaultValue={flightDate}
-          autoFocus
-          onBlur={(e) => {
-            if (e.target.value) onFlightDateChange(e.target.value);
-            setEditingDate(false);
-          }}
-          className="w-fit rounded-lg border border-border bg-white px-2 py-1 text-sm outline-none focus:border-teal"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={draftDate}
+            onChange={(e) => setDraftDate(e.target.value)}
+            autoFocus
+            className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-teal"
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            className="rounded-lg bg-teal px-3 py-2 text-sm font-medium text-white hover:bg-teal-deep"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-ink hover:bg-teal-mist"
+          >
+            Cancel
+          </button>
+        </div>
       ) : (
         <button
           type="button"
-          onClick={() => setEditingDate(true)}
+          onClick={startEditing}
           className="w-fit text-left text-sm text-muted underline decoration-dotted underline-offset-4"
         >
           {countdownText} · flight {flightDate}
@@ -67,7 +96,7 @@ export function PhaseHeader({
             key={p}
             type="button"
             onClick={() => onPhaseChange(p)}
-            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded-full px-3 py-2 text-sm font-medium transition-colors ${
               phase === p ? "bg-teal text-white" : "text-teal-deep"
             }`}
           >

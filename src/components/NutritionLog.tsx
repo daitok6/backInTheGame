@@ -6,6 +6,7 @@ import {
   deleteEntry,
   getNutritionDay,
   logFood,
+  updateEntry,
   updateNutritionTargets,
   type FoodOption,
   type NutritionEntryView,
@@ -150,6 +151,11 @@ export function NutritionLog({
     await deleteEntry({ id });
   }
 
+  async function handleUpdateServings(id: number, newServings: number) {
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, servings: newServings } : e)));
+    await updateEntry({ id, servings: newServings });
+  }
+
   async function handleSaveTargets() {
     setSavingTargets(true);
     try {
@@ -170,7 +176,7 @@ export function NutritionLog({
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-lg border border-border bg-white px-2 py-1 text-sm outline-none focus:border-teal"
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-teal"
         />
       </div>
 
@@ -334,22 +340,12 @@ export function NutritionLog({
               ) : (
                 <ul className="flex flex-col gap-1.5">
                   {mealEntries.map((e) => (
-                    <li key={e.id} className="flex items-center justify-between text-sm">
-                      <span>
-                        {e.name}{" "}
-                        <span className="text-muted">
-                          ({e.servings}× {e.servingLabel}, {Math.round(e.caloriesPerServing * e.servings)}{" "}
-                          cal)
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(e.id)}
-                        className="text-xs text-coral"
-                      >
-                        Delete
-                      </button>
-                    </li>
+                    <EntryRow
+                      key={e.id}
+                      entry={e}
+                      onUpdateServings={(servings) => handleUpdateServings(e.id, servings)}
+                      onDelete={() => handleDelete(e.id)}
+                    />
                   ))}
                 </ul>
               )}
@@ -357,5 +353,66 @@ export function NutritionLog({
           ))}
       </div>
     </div>
+  );
+}
+
+function EntryRow({
+  entry,
+  onUpdateServings,
+  onDelete,
+}: {
+  entry: NutritionEntryView;
+  onUpdateServings: (servings: number) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [servings, setServings] = useState(String(entry.servings));
+
+  function handleSave() {
+    const value = Number(servings);
+    if (Number.isFinite(value) && value > 0) onUpdateServings(value);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <li className="flex items-center gap-2 text-sm">
+        <span className="flex-1">{entry.name}</span>
+        <input
+          type="number"
+          inputMode="decimal"
+          value={servings}
+          onChange={(e) => setServings(e.target.value)}
+          className="w-16 rounded border border-border px-1.5 py-1 text-sm"
+        />
+        <span className="text-xs text-muted">× {entry.servingLabel}</span>
+        <button type="button" onClick={handleSave} className="text-xs font-medium text-teal-deep">
+          Save
+        </button>
+        <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted">
+          Cancel
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center justify-between text-sm">
+      <span>
+        {entry.name}{" "}
+        <span className="text-muted">
+          ({entry.servings}× {entry.servingLabel},{" "}
+          {Math.round(entry.caloriesPerServing * entry.servings)} cal)
+        </span>
+      </span>
+      <span className="flex gap-2">
+        <button type="button" onClick={() => setEditing(true)} className="text-xs text-teal-deep">
+          Edit
+        </button>
+        <button type="button" onClick={onDelete} className="text-xs text-coral">
+          Delete
+        </button>
+      </span>
+    </li>
   );
 }

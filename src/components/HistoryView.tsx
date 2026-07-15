@@ -26,7 +26,7 @@ export function HistoryView({ logs, today, exercises, sessions, weightUnit }: Hi
         {view === "recovery" && (
           <a
             href="/api/export"
-            className="rounded-full border border-teal px-3 py-1.5 text-xs font-medium text-teal-deep hover:bg-teal-mist"
+            className="rounded-full border border-teal px-4 py-2 text-sm font-medium text-teal-deep hover:bg-teal-mist"
           >
             Download CSV
           </a>
@@ -39,7 +39,7 @@ export function HistoryView({ logs, today, exercises, sessions, weightUnit }: Hi
             key={v}
             type="button"
             onClick={() => setView(v)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
               view === v ? "bg-teal text-white" : "text-teal-deep"
             }`}
           >

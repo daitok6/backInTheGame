@@ -87,7 +87,10 @@ export function RestTimer({ triggerKey, durationSeconds }: RestTimerProps) {
   const pct = duration > 0 ? Math.round((remaining / duration) * 100) : 0;
 
   return (
-    <div className="sticky bottom-0 z-10 flex items-center gap-3 rounded-card border border-teal bg-card px-4 py-3 shadow-sm">
+    <div
+      className="sticky z-40 flex items-center gap-3 rounded-card border border-teal bg-card px-4 py-3 shadow-sm"
+      style={{ bottom: "calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 8px)" }}
+    >
       <div className="flex-1">
         <div className="flex items-center justify-between text-xs text-muted">
           <span>Rest</span>

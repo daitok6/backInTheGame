@@ -6,6 +6,7 @@ import {
   addRoutineExercise,
   createRoutine,
   deleteRoutine,
+  reorderRoutineExercises,
   removeRoutineExercise,
   renameRoutine,
   type RoutineView,
@@ -99,6 +100,11 @@ export function RoutineManager({
               ),
             )
           }
+          onReorder={(reordered) =>
+            setRoutines((prev) =>
+              prev.map((r) => (r.id === routine.id ? { ...r, exercises: reordered } : r)),
+            )
+          }
         />
       ))}
     </div>
@@ -114,6 +120,7 @@ function RoutineCard({
   onDelete,
   onSlotAdded,
   onSlotRemoved,
+  onReorder,
 }: {
   routine: RoutineView;
   exercisesList: ExerciseOption[];
@@ -123,6 +130,7 @@ function RoutineCard({
   onDelete: () => void;
   onSlotAdded: (slot: RoutineView["exercises"][number]) => void;
   onSlotRemoved: (slotId: number) => void;
+  onReorder: (reordered: RoutineView["exercises"]) => void;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(routine.name);
@@ -164,6 +172,18 @@ function RoutineCard({
   async function handleRemoveSlot(slotId: number) {
     onSlotRemoved(slotId);
     await removeRoutineExercise({ id: slotId });
+  }
+
+  async function handleMoveSlot(index: number, direction: -1 | 1) {
+    const otherIndex = index + direction;
+    if (otherIndex < 0 || otherIndex >= routine.exercises.length) return;
+    const reordered = [...routine.exercises];
+    [reordered[index], reordered[otherIndex]] = [reordered[otherIndex], reordered[index]];
+    onReorder(reordered);
+    await reorderRoutineExercises({
+      routineId: routine.id,
+      orderedIds: reordered.map((s) => s.id),
+    });
   }
 
   return (
@@ -211,9 +231,29 @@ function RoutineCard({
         <p className="text-sm text-muted">No exercises yet — add one below.</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
-          {routine.exercises.map((slot) => (
-            <li key={slot.id} className="flex items-center justify-between text-sm">
-              <span>
+          {routine.exercises.map((slot, index) => (
+            <li key={slot.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => handleMoveSlot(index, -1)}
+                  disabled={index === 0}
+                  className="leading-none text-muted disabled:opacity-30"
+                  aria-label="Move up"
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMoveSlot(index, 1)}
+                  disabled={index === routine.exercises.length - 1}
+                  className="leading-none text-muted disabled:opacity-30"
+                  aria-label="Move down"
+                >
+                  ▼
+                </button>
+              </span>
+              <span className="flex-1">
                 {slot.exerciseName}
                 {slot.targetSets != null && (
                   <span className="text-muted">

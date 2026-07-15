@@ -5,13 +5,11 @@ import { PhaseHeader } from "./PhaseHeader";
 import { LegMap } from "./LegMap";
 import { IntensitySlider } from "./IntensitySlider";
 import { NoteField } from "./NoteField";
-import { SaveIndicator } from "./SaveIndicator";
 import { CentralizationStrip } from "./CentralizationStrip";
 import { Checklist } from "./Checklist";
 import { TodoList, type TodoItemView } from "./TodoList";
 import { RedFlagsFooter } from "./RedFlagsFooter";
 import { EnableReminders } from "./EnableReminders";
-import { useDebouncedSave, type SaveStatus } from "@/lib/useDebouncedSave";
 import { upsertDailyLog, toggleTodo, updateSettings } from "@/app/actions";
 import { computeDefaultPhase } from "@/lib/date";
 import { checklistForPhase, TODOS_BY_PHASE, type Phase } from "@/lib/content";
@@ -36,12 +34,7 @@ export interface DashboardProps {
   recentDays: DaySlot[]; // last 14 calendar days, oldest first, last entry is today
 }
 
-function combineStatus(statuses: SaveStatus[]): SaveStatus {
-  if (statuses.includes("saving")) return "saving";
-  if (statuses.includes("error")) return "error";
-  if (statuses.includes("saved")) return "saved";
-  return "idle";
-}
+type CheckinSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 export function Dashboard({
   today,
@@ -63,46 +56,44 @@ export function Dashboard({
   );
   const [todoState, setTodoState] = useState<TodoRow[]>(todos);
 
-  const painSave = useDebouncedSave<number>((value) =>
-    upsertDailyLog({ date: today, pain: value }),
-  );
-  const reachSave = useDebouncedSave<number>((value) =>
-    upsertDailyLog({ date: today, reach: value }),
-  );
-  const noteSave = useDebouncedSave<string>((value) =>
-    upsertDailyLog({ date: today, note: value }),
-  );
-  const checklistSave = useDebouncedSave<Record<string, boolean>>(
-    (value) => upsertDailyLog({ date: today, checks: value }),
-    300,
-  );
+  // Pain, reach, note, and checklist are all fields on today's single
+  // daily_logs row — they're edited freely as local state and only written
+  // to the server when the user taps "Save check-in" below.
+  const [checkinSaveState, setCheckinSaveState] = useState<CheckinSaveState>("idle");
 
   function handlePainChange(value: number) {
     setPain(value);
-    painSave.trigger(value);
+    setCheckinSaveState("dirty");
   }
 
   function handleReachChange(value: number) {
     setReach(value);
-    reachSave.trigger(value);
+    setCheckinSaveState("dirty");
   }
 
   function handleNoteChange(value: string) {
     setNote(value);
-    noteSave.trigger(value);
+    setCheckinSaveState("dirty");
   }
 
   function handleChecklistToggle(itemId: string, done: boolean) {
-    setChecks((prev) => {
-      const next = { ...prev, [itemId]: done };
-      // Send the full local checks object each time; the debounce coalesces
-      // rapid toggles and the server merges it, so intermediate states
-      // dropped by debouncing are never lost — only ever caught up.
-      checklistSave.trigger(next);
-      return next;
-    });
+    setChecks((prev) => ({ ...prev, [itemId]: done }));
+    setCheckinSaveState("dirty");
   }
 
+  async function handleSaveCheckin() {
+    setCheckinSaveState("saving");
+    try {
+      await upsertDailyLog({ date: today, pain, reach, note, checks });
+      setCheckinSaveState("saved");
+      setTimeout(() => setCheckinSaveState((s) => (s === "saved" ? "idle" : s)), 1500);
+    } catch {
+      setCheckinSaveState("error");
+    }
+  }
+
+  // Todo checkboxes stay instant-toggle — plain booleans with nothing to
+  // lose mid-edit, unlike the typed/slider fields above.
   async function handleTodoToggle(itemId: string, done: boolean) {
     setTodoState((prev) =>
       prev.map((t) => (t.phase === phase && t.itemId === itemId ? { ...t, done } : t)),
@@ -126,17 +117,11 @@ export function Dashboard({
     }));
 
   // Overlay today's live reach onto the trailing 14-day window (last entry)
-  // so the strip and verdict react immediately as the leg map is tapped.
+  // so the strip and verdict react immediately as the leg map is tapped,
+  // even before the check-in is saved.
   const days: DaySlot[] = recentDays.map((d, i) =>
     i === recentDays.length - 1 ? { ...d, reach } : d,
   );
-
-  const overallStatus = combineStatus([
-    painSave.status,
-    reachSave.status,
-    noteSave.status,
-    checklistSave.status,
-  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col gap-6 p-4 pb-10">
@@ -151,25 +136,36 @@ export function Dashboard({
       <EnableReminders />
 
       <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Today&apos;s check-in</h2>
-          <SaveIndicator status={overallStatus} />
-        </div>
+        <h2 className="text-base font-semibold">Today&apos;s check-in</h2>
         <LegMap reach={reach} onChange={handleReachChange} />
         <IntensitySlider pain={pain} onChange={handlePainChange} />
         <NoteField note={note} onChange={handleNoteChange} />
+        {checklistItems.length > 0 && (
+          <Checklist items={checklistItems} checks={checks} onToggle={handleChecklistToggle} />
+        )}
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+          <span className="text-xs text-muted">
+            {checkinSaveState === "dirty" && "Unsaved changes"}
+            {checkinSaveState === "saved" && "Saved ✓"}
+            {checkinSaveState === "error" && "Couldn't save — try again"}
+          </span>
+          <button
+            type="button"
+            onClick={handleSaveCheckin}
+            disabled={checkinSaveState === "idle" || checkinSaveState === "saving"}
+            className={`rounded-full px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
+              checkinSaveState === "error" ? "bg-coral hover:bg-coral" : "bg-teal hover:bg-teal-deep"
+            }`}
+          >
+            {checkinSaveState === "saving" ? "Saving…" : "Save check-in"}
+          </button>
+        </div>
       </section>
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4">
         <h2 className="text-base font-semibold">14-day trend</h2>
         <CentralizationStrip days={days} />
       </section>
-
-      {checklistItems.length > 0 && (
-        <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4">
-          <Checklist items={checklistItems} checks={checks} onToggle={handleChecklistToggle} />
-        </section>
-      )}
 
       <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-4">
         <TodoList items={phaseTodos} onToggle={handleTodoToggle} />

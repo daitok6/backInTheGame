@@ -165,7 +165,7 @@ export function WorkoutLog({
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-lg border border-border bg-white px-2 py-1 text-sm outline-none focus:border-teal"
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-teal"
         />
       </div>
 

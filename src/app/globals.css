@@ -11,6 +11,7 @@
   --teal-mist: #DCEDE8;
   --coral: #E8684A;
   --coral-soft: #FBE3DC;
+  --bottom-nav-h: 64px;
 }
 
 @theme inline {
@@ -32,6 +33,9 @@
 body {
   background: var(--bg);
   color: var(--ink);
+  /* Clears the fixed bottom tab bar (NavBar) app-wide so page content is
+   * never hidden underneath it — no per-page padding needed. */
+  padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
 }
 
 h1, h2, h3, h4 {
